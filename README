@@ -1,0 +1,70 @@
+Tema1 APD - Map_Reduce
+Barbuceanu Constantin 332CB
+
+Tema de fata implementeaza paradigma Map-Reduce cu scopul de afla numarul de
+puteri perfecte dintr-un set de fisiere de input date. Numarul de mapperi si
+numarul de reduceri sunt primiti ca parametri in linia de comanda. Numarul de
+reduceri determina numarul de exponenti valabili care se vor lua in calcul
+(de la 2 la nr_reducers + 2).
+
+Programul are 4 functii: main, mapper, reducer, check_perfect_power.
+
+main:
+    * Se parseaza parametrii din linia de comanda.
+
+    * Se deschide fisierul de baza din care se vor citi numele fisierlor de
+      procesat. Acestea se vor pune pe linii intr-o matrice de caractere.
+      Ulterior se va tine minte numarul lor si contorul de linie care va fi
+      incrementat de fiecare mapper de fiecare data cand deschide un fisier
+      nou (ZONA CRITICA - mutex).
+
+    * Se creeaza structura "v" (vector<vector<vector<int>>). Aici fiecare "linie"
+      este un mapper. Fiecare "coloana" un exponent (nr-ul de exponenti posibili = nr_reducers + 2).
+      Si fiecare element poate contine mai multe numere puteri perfecte de
+      un anumit exponent.
+
+    * Se pornesc threadurile (toate in aceleasi for) : prima data mapperii
+      apoi reducerii.
+
+    * Se asteapta la join threadurile, se distruge bariera si dezaloca matricea.
+
+mapperi:
+    * Fiecare mapper ruleaza intr-o bucla while care se termina atunci cand
+      contorul de linie a ajuns la ultima linie din matricea de fisiere. La
+      inceputul buclei se face lock pe zona critica in care se incrementeaza
+      contorul de linie si se deschide urmatorul fisier, apoi se face unlock.
+
+    * Se citesc toate numerele din fisier. Daca este 1 se pune in toate multimile
+      de puteri ale mapperului curent. Daca nu este 1, se verifica daca este putere
+      perfecta cu "check_perfect_power". Aceasta functie va sti exact unde sa puna
+      in "v" numarul daca este putere perfecta, pe baza id_mapper si a exponentului 
+      gasit.
+
+    * Bariera se pune la final.
+
+    * Se distruge mutexul.
+
+reduceri:
+    * Se deschide fisierul in care reducerul curent o sa scrie rezultatul.
+
+    * Bariera se pune la inceput.
+
+    * Fiecare reducer parcurge o "coloana" din structura "v" data de id_reducer.
+      Fiecare coloana reprezinta puteri de un anumit exponent. Parcurgand coloana
+      insereza toate elementele din multimea fiecarui mapper in "final_list."
+
+    * Se elimina duplicatele din fina_list. Se scrie in fiserul de output sizeul
+      final_list care inseamna numarul de elemente unice.
+
+check_perfect_power:
+    * Primeste ca parametri: numarul de verificat, structura v, idul mapperului,
+      nr_reducers.
+
+    * Se face un fel de cautare binara pentru a gasi numerele care ridicate la un
+      exponent in intervalul [2 <-> (nr_reducers + 2)] sunt egale cu nr. Daca se
+      gaseste un astfel de numar inseamna ca nr este putere perfecta de exponentul
+      curent si se introduce in structura v.
+
+Structura trimisa ca argument permite ca v, bariera, file_counter, matrix sa fie vizibile
+tuturor threadurilor, deoarece sunt pointeri spre deosebire de id_mapper sau id_reducers
+care sunt unice pentru fiecare thread si sunt trimise prin valoare.
